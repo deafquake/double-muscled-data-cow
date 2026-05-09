@@ -236,7 +236,13 @@ services:
       - agent_backend
     networks:
       - idata-network
-
+  video-ingestion-api:
+    build : ./video-ingestion-api
+    container_name: video-ingestion-api
+    ports:
+      - "18080:8080"
+    volumes:
+      - ./video-ingestion-api/videos:/app/videos
 
 volumes:
   mongodb_data:

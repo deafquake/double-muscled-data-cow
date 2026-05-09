@@ -12,19 +12,21 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late TextEditingController _folderController;
+  late TextEditingController _apiUrlController;
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
     final settings = context.read<SettingsProvider>();
-    _folderController =
-        TextEditingController(text: settings.subfolder);
+    _folderController = TextEditingController(text: settings.subfolder);
+    _apiUrlController = TextEditingController(text: settings.apiUrl);
   }
 
   @override
   void dispose() {
     _folderController.dispose();
+    _apiUrlController.dispose();
     super.dispose();
   }
 
@@ -33,12 +35,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (name.isEmpty) return;
 
     setState(() => _saving = true);
-    await context.read<SettingsProvider>().setSubfolder(name);
+    final provider = context.read<SettingsProvider>();
+    await provider.setSubfolder(name);
+    await provider.setApiUrl(_apiUrlController.text);
     if (mounted) {
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Sync folder updated'),
+          content: Text('Settings saved'),
           duration: Duration(seconds: 2),
         ),
       );
@@ -118,6 +122,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   : const Text('Save',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             ),
+          ),
+
+          const SizedBox(height: 32),
+
+          // ── Video ingestion API section ──────────────────────────────
+          const _SectionHeader('Video Ingestion API'),
+          const SizedBox(height: 8),
+          const Text(
+            'Enter the base URL of the video-ingestion-api. '
+            'Recorded snippets will be uploaded here every 5 minutes.',
+            style: TextStyle(color: Colors.white54, fontSize: 13, height: 1.5),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _apiUrlController,
+            style: const TextStyle(color: Colors.white),
+            keyboardType: TextInputType.url,
+            autocorrect: false,
+            decoration: InputDecoration(
+              labelText: 'API base URL',
+              labelStyle: const TextStyle(color: Colors.white54),
+              hintText: 'e.g. http://192.168.1.10:8080',
+              hintStyle: const TextStyle(color: Colors.white24),
+              filled: true,
+              fillColor: Colors.white10,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide:
+                    const BorderSide(color: Color(0xFF1A73E8), width: 2),
+              ),
+            ),
+            onSubmitted: (_) => _save(),
           ),
 
           const SizedBox(height: 32),

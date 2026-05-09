@@ -6,13 +6,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const _kSubfolderKey = 'sync_subfolder';
 const _kDefaultSubfolder = 'MobiusVideos';
+const _kApiUrlKey = 'api_url';
 
 class SettingsProvider extends ChangeNotifier {
   String _subfolder = _kDefaultSubfolder;
   String _documentsPath = '';
+  String _apiUrl = '';
 
   String get subfolder => _subfolder;
   String get documentsPath => _documentsPath;
+  String get apiUrl => _apiUrl;
 
   /// The full path where videos are saved. This is what you point Mobius Sync at.
   String get syncFolderPath => p.join(_documentsPath, _subfolder);
@@ -23,6 +26,7 @@ class SettingsProvider extends ChangeNotifier {
 
     final prefs = await SharedPreferences.getInstance();
     _subfolder = prefs.getString(_kSubfolderKey) ?? _kDefaultSubfolder;
+    _apiUrl = prefs.getString(_kApiUrlKey) ?? '';
 
     await _ensureSyncFolderExists();
     notifyListeners();
@@ -36,6 +40,13 @@ class SettingsProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kSubfolderKey, _subfolder);
     await _ensureSyncFolderExists();
+    notifyListeners();
+  }
+
+  Future<void> setApiUrl(String url) async {
+    _apiUrl = url.trim();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kApiUrlKey, _apiUrl);
     notifyListeners();
   }
 
