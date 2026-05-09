@@ -7,6 +7,7 @@ from app.db import init_db
 from app.routes.chat_routes import chat_bp
 from app.routes.file_routes import file_bp
 from app.routes.auth_routes import auth_bp
+from app.routes.video_routes import video_bp
 from app.routes.calendar_candidate_routes import candidate_bp
 
 def create_app():
@@ -16,6 +17,7 @@ def create_app():
     app.register_blueprint(chat_bp)
     app.register_blueprint(file_bp)
     app.register_blueprint(auth_bp, url_prefix="/auth")
+    app.register_blueprint(video_bp)
     app.register_blueprint(candidate_bp)
     init_db()
     
