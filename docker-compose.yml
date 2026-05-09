@@ -147,7 +147,7 @@ services:
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
       - FRONTEND_URL=${FRONTEND_URL}
-
+      - VIDEO_DIR=/app/videos
     depends_on:
       - mongodb
       - standalone
@@ -157,6 +157,7 @@ services:
     volumes:
       - ./agent_backend:/app
       - ./local-documents:/app/local-documents
+      - ./videos:/app/videos
     
   document_collector:
     image : document_collector:0.0.2
