@@ -2,9 +2,12 @@ PODS:
   - camera_avfoundation (0.0.1):
     - Flutter
   - Flutter (1.0.0)
+<<<<<<< HEAD
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
+=======
+>>>>>>> f895fa3 (feat: Add settings screen for sync folder configuration)
   - permission_handler_apple (9.3.0):
     - Flutter
   - shared_preferences_foundation (0.0.1):
@@ -17,7 +20,10 @@ PODS:
 DEPENDENCIES:
   - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/ios`)
   - Flutter (from `Flutter`)
+<<<<<<< HEAD
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
+=======
+>>>>>>> f895fa3 (feat: Add settings screen for sync folder configuration)
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
   - video_player_avfoundation (from `.symlinks/plugins/video_player_avfoundation/darwin`)
@@ -27,8 +33,11 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/camera_avfoundation/ios"
   Flutter:
     :path: Flutter
+<<<<<<< HEAD
   path_provider_foundation:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
+=======
+>>>>>>> f895fa3 (feat: Add settings screen for sync folder configuration)
   permission_handler_apple:
     :path: ".symlinks/plugins/permission_handler_apple/ios"
   shared_preferences_foundation:
@@ -39,10 +48,16 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   camera_avfoundation: 5675ca25298b6f81fa0a325188e7df62cc217741
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+<<<<<<< HEAD
   path_provider_foundation: bb55f6dbba17d0dccd6737fe6f7f34fbd0376880
   permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
   video_player_avfoundation: dd410b52df6d2466a42d28550e33e4146928280a
+=======
+  permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
+  shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
+  video_player_avfoundation: 3453f792138786248960ca029747fcd9f318ef52
+>>>>>>> f895fa3 (feat: Add settings screen for sync folder configuration)
 
 PODFILE CHECKSUM: 3c63482e143d1b91d2d2560aee9fb04ecc74ac7e
 
