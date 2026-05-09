@@ -1,10 +1,14 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/video_storage_service.dart';
+import '../services/video_upload_service.dart';
+
+const _kSegmentDuration = Duration(minutes: 5);
 
 class CameraScreen extends StatefulWidget {
   final List<CameraDescription> cameras;
@@ -23,7 +27,9 @@ class _CameraScreenState extends State<CameraScreen>
   bool _isRecording = false;
   bool _isSaving = false;
   Duration _elapsed = Duration.zero;
-  Timer? _timer;
+  Timer? _elapsedTimer;
+  Timer? _segmentTimer;
+  int _pendingUploads = 0;
 
   @override
   void initState() {
@@ -37,7 +43,8 @@ class _CameraScreenState extends State<CameraScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    _timer?.cancel();
+    _elapsedTimer?.cancel();
+    _segmentTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -83,23 +90,73 @@ class _CameraScreenState extends State<CameraScreen>
         _isRecording = true;
         _elapsed = Duration.zero;
       });
-      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
         if (mounted) setState(() => _elapsed += const Duration(seconds: 1));
+      });
+      _segmentTimer = Timer.periodic(_kSegmentDuration, (_) {
+        _rotateSegment();
       });
     } on CameraException catch (e) {
       _showError('Could not start recording: ${e.description}');
     }
   }
 
+  /// Stops the current segment, uploads it in the background, then immediately
+  /// starts the next segment — all without interrupting the user's recording session.
+  Future<void> _rotateSegment() async {
+    if (!mounted || !_isRecording || !_controller.value.isRecordingVideo) {
+      return;
+    }
+    final apiUrl = context.read<SettingsProvider>().apiUrl;
+
+    try {
+      final xfile = await _controller.stopVideoRecording();
+      await _controller.startVideoRecording();
+
+      if (apiUrl.isNotEmpty) {
+        _uploadSegment(xfile.path, apiUrl);
+      } else {
+        File(xfile.path).delete().ignore();
+      }
+    } on CameraException catch (e) {
+      if (mounted) _showError('Segment rotation failed: ${e.description}');
+    }
+  }
+
+  /// Fire-and-forget upload. Increments [_pendingUploads] while in flight.
+  void _uploadSegment(String filePath, String apiUrl) {
+    if (mounted) setState(() => _pendingUploads++);
+
+    VideoUploadService(baseUrl: apiUrl)
+        .uploadVideo(filePath)
+        .then((_) => File(filePath).delete().ignore())
+        .catchError((Object e) {
+      if (mounted) _showError('Upload failed: $e');
+    }).whenComplete(() {
+      if (mounted) setState(() => _pendingUploads--);
+    });
+  }
+
   Future<void> _stopRecording() async {
-    _timer?.cancel();
-    // Capture sync path before the first await so we don't cross an async gap.
+    _elapsedTimer?.cancel();
+    _segmentTimer?.cancel();
+
+    // Capture context-dependent values before any awaits.
     final syncPath = context.read<SettingsProvider>().syncFolderPath;
-    setState(() { _isRecording = false; _isSaving = true; });
+    final apiUrl = context.read<SettingsProvider>().apiUrl;
+
+    setState(() {
+      _isRecording = false;
+      _isSaving = true;
+    });
 
     try {
       final recording = await _controller.stopVideoRecording();
-      await VideoStorageService.saveRecording(recording, syncPath);
+      final saved = await VideoStorageService.saveRecording(recording, syncPath);
+
+      if (apiUrl.isNotEmpty) {
+        _uploadSegment(saved.path, apiUrl);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -118,8 +175,7 @@ class _CameraScreenState extends State<CameraScreen>
   }
 
   Future<void> _switchCamera() async {
-    if (widget.cameras.length < 2) return;
-    if (_isRecording) return;
+    if (widget.cameras.length < 2 || _isRecording) return;
 
     setState(() => _isInitialized = false);
     _cameraIndex = (_cameraIndex + 1) % widget.cameras.length;
@@ -154,7 +210,7 @@ class _CameraScreenState extends State<CameraScreen>
           else
             const Center(child: CircularProgressIndicator(color: Colors.white)),
 
-          // Top bar: close + timer
+          // Top bar: close + timer + upload badge
           Positioned(
             top: 0,
             left: 0,
@@ -173,32 +229,43 @@ class _CameraScreenState extends State<CameraScreen>
                           _isRecording ? null : () => Navigator.pop(context),
                     ),
 
-                    // Recording timer
+                    // Recording timer + upload badge
                     if (_isRecording)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withValues(alpha: 0.85),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.circle,
-                                color: Colors.white, size: 10),
-                            const SizedBox(width: 6),
-                            Text(
-                              _formatElapsed(_elapsed),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                fontFeatures: [FontFeature.tabularFigures()],
-                              ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.85),
+                              borderRadius: BorderRadius.circular(12),
                             ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.circle,
+                                    color: Colors.white, size: 10),
+                                const SizedBox(width: 6),
+                                Text(
+                                  _formatElapsed(_elapsed),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    fontFeatures: [
+                                      FontFeature.tabularFigures()
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (_pendingUploads > 0) ...[
+                            const SizedBox(width: 8),
+                            _UploadBadge(count: _pendingUploads),
                           ],
-                        ),
+                        ],
                       ),
 
                     // Switch camera
@@ -246,6 +313,42 @@ class _CameraScreenState extends State<CameraScreen>
   }
 }
 
+class _UploadBadge extends StatelessWidget {
+  final int count;
+  const _UploadBadge({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.black54,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(
+                strokeWidth: 1.5, color: Colors.white70),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            '$count',
+            style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 12,
+                fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _RecordButton extends StatelessWidget {
   final bool isRecording;
   final VoidCallback? onPressed;
@@ -270,8 +373,7 @@ class _RecordButton extends StatelessWidget {
             height: isRecording ? 30 : 62,
             decoration: BoxDecoration(
               color: Colors.red,
-              borderRadius:
-                  BorderRadius.circular(isRecording ? 6 : 31),
+              borderRadius: BorderRadius.circular(isRecording ? 6 : 31),
             ),
           ),
         ),
