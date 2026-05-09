@@ -1,0 +1,12 @@
+coloredlogs
+flatbuffers
+humanfriendly
+mpmath
+onnx
+onnxruntime
+opencv-python
+packaging
+protobuf
+scipy
+sympy
+typing_extensions

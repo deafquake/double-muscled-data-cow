@@ -1,0 +1,35 @@
+# Secrets
+.env
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# Large model files (download separately)
+stage_deepspeech/whisper-base/
+stage_object_detector/onnx/*.onnx
+
+# Generated pipeline outputs (runtime data, not source)
+local-shared/ffmpegout0/
+local-shared/ffmpeg1out/
+local-shared/ffmpeg2out/
+local-shared/ffmpeg3out/
+local-shared/lobrosa_out/
+local-shared/deepspeechout/
+local-shared/objectdetectorout/
+local-shared/*_metadata.json
+local-shared/*_evolution/
+
+# Keep the local-shared folder itself tracked
+!local-shared/.gitkeep
+local-shared/*.mp4
