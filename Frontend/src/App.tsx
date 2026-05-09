@@ -9,6 +9,7 @@ import SpotlightSearch from "./components/SpotlightSearch";
 import LoginPage, { UserData } from "./components/LoginPage";
 import SignupPage from "./components/SignupPage";
 import type { ThemeId } from "./theme";
+import type { CalendarCandidate } from "./components/CalendarCandidates";
 import {
   ChatListResponse,
   ChatMessage,
@@ -72,6 +73,8 @@ const App = () => {
   const [activeSection, setActiveSection] = useState<"chat" | "remoteFiles" | "tasks">("chat");
   const [theme, setTheme] = useState<ThemeId>(resolveInitialTheme);
   const [calendarToast, setCalendarToast] = useState<"connected" | "error" | null>(null);
+  const [calendarCandidates, setCalendarCandidates] = useState<CalendarCandidate[]>([]);
+  const [isAnalyzingTranscript, setIsAnalyzingTranscript] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const chatWindowRef = useRef<ChatWindowRef>(null);
 
@@ -286,6 +289,48 @@ const App = () => {
     }
   };
 
+  const loadCalendarCandidates = async () => {
+    try {
+      const data = await fetchJson<{ candidates: CalendarCandidate[] }>("/calendar-candidates");
+      setCalendarCandidates(data.candidates);
+    } catch {
+      // Silently ignore — user may not be logged in yet
+    }
+  };
+
+  const handleAnalyzeTranscript = async (transcript: string) => {
+    setIsAnalyzingTranscript(true);
+    try {
+      const data = await fetchJson<{ candidates: CalendarCandidate[] }>(
+        "/calendar-candidates/analyze",
+        { method: "POST", body: JSON.stringify({ transcript }) }
+      );
+      setCalendarCandidates((prev) => [...data.candidates, ...prev]);
+    } catch (err) {
+      console.error("Transcript analysis failed", err);
+    } finally {
+      setIsAnalyzingTranscript(false);
+    }
+  };
+
+  const handleApproveCandidate = async (id: string) => {
+    try {
+      await fetchJson(`/calendar-candidates/${id}/approve`, { method: "POST" });
+      setCalendarCandidates((prev) => prev.filter((c) => c.id !== id));
+    } catch (err) {
+      console.error("Approve candidate failed", err);
+    }
+  };
+
+  const handleRejectCandidate = async (id: string) => {
+    try {
+      await fetchJson(`/calendar-candidates/${id}/reject`, { method: "POST" });
+      setCalendarCandidates((prev) => prev.filter((c) => c.id !== id));
+    } catch (err) {
+      console.error("Reject candidate failed", err);
+    }
+  };
+
   const loadChats = async () => {
     try {
       const data = await fetchJson<ChatListResponse>("/chats");
@@ -348,6 +393,7 @@ const App = () => {
     if (user) {
       void loadFileTree();
       void loadChats();
+      void loadCalendarCandidates();
     }
   }, [user]);
 
@@ -764,6 +810,11 @@ const App = () => {
             onOpenAddDocs={() => fileInputRef.current?.click()}
             onRetryMessage={() => undefined}
             onOpenToolModal={handleOpenToolModal}
+            calendarCandidates={calendarCandidates}
+            onAnalyzeTranscript={handleAnalyzeTranscript}
+            onApproveCandidate={handleApproveCandidate}
+            onRejectCandidate={handleRejectCandidate}
+            isAnalyzingTranscript={isAnalyzingTranscript}
           />
         )}
       </main>

@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import { ChatMessage, SelectedDoc } from "../types";
 import DocumentViewerPanel from "./DocumentViewerPanel";
 import GraphRenderer from "./GraphRenderer";
+import CalendarCandidates, { CalendarCandidate } from "./CalendarCandidates";
 import { parseGraphContent } from "../utils/graphParser";
 import { normalizeTableSpacing, resolveImageSrc } from "../utils/markdown";
 
@@ -26,6 +27,11 @@ interface ChatWindowProps {
   onOpenFileManager: () => void;
   onOpenAddDocs: () => void;
   onRetryMessage: (messageId: string) => void;
+  calendarCandidates: CalendarCandidate[];
+  onAnalyzeTranscript: (transcript: string) => Promise<void>;
+  onApproveCandidate: (id: string) => Promise<void>;
+  onRejectCandidate: (id: string) => Promise<void>;
+  isAnalyzingTranscript: boolean;
 }
 
 export interface ChatWindowRef {
@@ -127,7 +133,12 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({
   docMenuOpen,
   onOpenFileManager,
   onOpenAddDocs,
-  onRetryMessage
+  onRetryMessage,
+  calendarCandidates,
+  onAnalyzeTranscript,
+  onApproveCandidate,
+  onRejectCandidate,
+  isAnalyzingTranscript,
 }, ref) => {
   const formRef = useRef<HTMLFormElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
@@ -278,6 +289,13 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({
             <div className="chat-header-text">
               <h1>Hey, what do you want to work on today?</h1>
               <p className="chat-subtitle">Select your docs, arm the right tools, and start a conversation when you're ready.</p>
+              <CalendarCandidates
+                candidates={calendarCandidates}
+                onAnalyze={onAnalyzeTranscript}
+                onApprove={onApproveCandidate}
+                onReject={onRejectCandidate}
+                isAnalyzing={isAnalyzingTranscript}
+              />
             </div>
           )}
         </header>

@@ -10,7 +10,7 @@ from ..services.document_parser.document_parser_service import DocumentParser
 from ..services.vector_db.milvus_connector import MilvusConnector
 from ..services.vector_db.document_catalogue_connector import DocumentCatalogueConnector
 from ..utils.logger import get_logger
-from langchain_openai import OpenAIEmbeddings
+from ..services.vector_db.lm_studio_embeddings import LMStudioEmbeddings
 
 logger = get_logger(__name__)
 
@@ -30,7 +30,7 @@ async def file_parser_thread(app, VLM=False):
     try:
         document_parser_service = DocumentParser()
         file_fetcher_service = FileFetcher()
-        embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+        embeddings = LMStudioEmbeddings()
         milvus_connector_service = MilvusConnector(
             embeddings=embeddings,
             collection_name="document_chunks",
