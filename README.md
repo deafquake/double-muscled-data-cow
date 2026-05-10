@@ -31,4 +31,43 @@ document_agent - agent that does document and vector db retreivals
 calendar_agent - agent that interacts with google cloud api 
 orchestrator agent - agent that plans and manages the other agents. 
 
+## Architecture
+Iphone app         Remote Storage (Google Drive, S3, NAS…)
+     │                        │
+     │               User rclone Backend
+     │                (host, port 13000)
+     │                        │
+     └────────────────────────┘
+                  │
+           local-documents/
+                  │
+                  ▼
+        Document Collector ──(file events)──► MongoDB
+        (Docker, watchdog)                   (document metadata)
+                                                    │
+                                                    ▼
+                                       Document Parser Backend
+                                       (Docling / Mistral OCR)
+                                        │              │
+                                        ▼              ▼
+                                     Milvus         MongoDB
+                                  (vector chunks)  (chunks + images)
+                                             │
+                                             ▼
+                                   Agent Backend (Flask)
+                              ┌──────────────────────────┐
+                              │      Orchestrator Agent   │
+                              │  ┌──────────────────────┐ │
+                              │  │    Document Agent    │ │
+                              │  │  (RAG + skills)      │ │
+                              │  └──────────────────────┘ │
+                              │  ┌──────────────────────┐ │
+                              │  │      SQL Agent       │ │
+                              │  │  (PostgreSQL)        │ │
+                              │  └──────────────────────┘ │
+                              └──────────────────────────┘
+                                             │
+                                             ▼
+                                   Frontend (React + Vite)
+
 
