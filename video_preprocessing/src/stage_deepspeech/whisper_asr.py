@@ -1,4 +1,4 @@
-4import os
+import os
 import argparse
 import torch
 from transformers import pipeline

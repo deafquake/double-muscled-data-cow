@@ -35,8 +35,37 @@ Rules:
 - Output ONLY JSON, no prose"""
 
 
-def analyze_transcript(transcript_text: str, user_id) -> list[dict]:
-    """Use an LLM to extract calendar event candidates from transcript_text and persist them."""
+def analyze_transcript(
+    transcript_text: str,
+    user_id,
+    reference_datetime: str | None = None,
+    preextracted_events: list[dict] | None = None,
+) -> list[dict]:
+    """
+    Extract calendar events from a transcript and persist them as candidates.
+
+    Parameters
+    ----------
+    transcript_text : str
+        Raw transcript to extract events from.
+    user_id : int | str | None
+        ID of the user to associate candidates with.
+        Pass None to skip DB persistence and only return the extracted events.
+    reference_datetime : str | None
+        ISO datetime string used as "today" when resolving relative time
+        references such as "Tuesday" or "next week". Defaults to UTC now.
+        Pass the video's recording timestamp so that relative times in the
+        transcript resolve correctly against when the video was made.
+    preextracted_events : list[dict] | None
+        Calendar events already extracted by the orchestrator (with relative
+        "relative_time" fields). When provided, these are included in the LLM
+        prompt as context hints so the model can cross-reference them while
+        resolving times to absolute datetimes.
+
+    Returns
+    -------
+    list[dict]  — saved calendar event dicts (empty list on failure).
+    """
     from ..db import SessionLocal
     from ..models.chat_models import CalendarEventCandidate
 
@@ -47,12 +76,34 @@ def analyze_transcript(transcript_text: str, user_id) -> list[dict]:
         temperature=0,
     )
 
-    today = datetime.utcnow().strftime("%Y-%m-%d")
+    # Use the video's recording time as the reference anchor so that relative
+    # phrases like "Tuesday" or "tomorrow" resolve correctly.
+    if reference_datetime:
+        try:
+            anchor = datetime.fromisoformat(reference_datetime.replace("Z", "+00:00"))
+        except ValueError:
+            logger.warning("Could not parse reference_datetime '%s', falling back to UTC now", reference_datetime)
+            anchor = datetime.utcnow()
+    else:
+        anchor = datetime.utcnow()
+
+    today = anchor.strftime("%Y-%m-%d")
     year = today[:4]
+
+    human_parts = [f"Extract calendar events from this transcript:\n\n{transcript_text}"]
+
+    if preextracted_events:
+        hints = json.dumps(preextracted_events, indent=2)
+        human_parts.append(
+            f"\nContext: the following events were already identified with relative "
+            f"time references. Use them as hints when resolving times to absolute "
+            f"datetimes — do not duplicate them, just ensure each appears once with "
+            f"a resolved start_datetime and end_datetime:\n{hints}"
+        )
 
     messages = [
         SystemMessage(content=_EXTRACTION_SYSTEM.format(today=today, year=year)),
-        HumanMessage(content=f"Extract calendar events from this transcript:\n\n{transcript_text}"),
+        HumanMessage(content="\n".join(human_parts)),
     ]
 
     try:
@@ -74,27 +125,41 @@ def analyze_transcript(transcript_text: str, user_id) -> list[dict]:
         logger.warning("Failed to parse JSON from LLM response: %s", exc)
         return []
 
+    # Validate and normalise datetimes before touching the DB.
+    validated: list[dict] = []
+    for event in events_data:
+        try:
+            start_dt = datetime.fromisoformat(event["start_datetime"])
+            end_dt = datetime.fromisoformat(event["end_datetime"])
+        except (KeyError, ValueError) as exc:
+            logger.warning("Skipping event with bad datetimes: %s — %s", event, exc)
+            continue
+
+        if end_dt <= start_dt:
+            end_dt = start_dt + timedelta(hours=1)
+
+        validated.append({**event, "start_datetime": start_dt, "end_datetime": end_dt})
+
+    # Skip DB persistence when no user context is available (e.g. background
+    # video ingestion without an authenticated request).
+    if user_id is None:
+        logger.info("No user_id provided — skipping DB persistence, returning %d events", len(validated))
+        return [
+            {**e, "start_datetime": e["start_datetime"].isoformat(), "end_datetime": e["end_datetime"].isoformat()}
+            for e in validated
+        ]
+
     db = SessionLocal()
     saved: list[dict] = []
     try:
-        for event in events_data:
-            try:
-                start_dt = datetime.fromisoformat(event["start_datetime"])
-                end_dt = datetime.fromisoformat(event["end_datetime"])
-            except (KeyError, ValueError) as exc:
-                logger.warning("Skipping event with bad datetimes: %s — %s", event, exc)
-                continue
-
-            if end_dt <= start_dt:
-                end_dt = start_dt + timedelta(hours=1)
-
+        for event in validated:
             candidate = CalendarEventCandidate(
                 user_id=user_id,
                 title=event.get("title", "Untitled Event")[:256],
-                start_datetime=start_dt,
-                end_datetime=end_dt,
+                start_datetime=event["start_datetime"],
+                end_datetime=event["end_datetime"],
                 description=event.get("description") or None,
-                location=(event.get("location") or None),
+                location=event.get("location") or None,
                 timezone=event.get("timezone", "UTC"),
                 source_excerpt=event.get("source_excerpt") or None,
             )

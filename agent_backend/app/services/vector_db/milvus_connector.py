@@ -47,6 +47,17 @@ class MilvusConnector:
             connection_args = self._construct_connection_args(uri, host, port)
             print(f"Connecting to Milvus with args: {connection_args}")
 
+            # langchain_milvus uses the ORM Collection(using=alias) internally for
+            # _extract_fields. In pymilvus 3.x, connecting via uri alone doesn't
+            # register the alias in the ORM connection registry, so we must call
+            # connections.connect() with host/port explicitly to ensure it's registered.
+            if not connections.has_connection("default"):
+                connections.connect(
+                    alias="default",
+                    host=MILVUS_HOST,
+                    port=int(MILVUS_PORT),
+                )
+
             self._vector_store = Milvus(
                 embedding_function=embeddings,
                 collection_name=collection_name,
@@ -105,25 +116,8 @@ class MilvusConnector:
         host = MILVUS_HOST
         port = MILVUS_PORT
         if host and port:
-            connection_args["host"] = host
-            connection_args["port"] = port
             connection_args["uri"] = f"http://{host}:{port}"
             logger.debug(f"Using Milvus connection: {host}:{port}")
-            return connection_args
-
-        # env_uri = os.getenv("MILVUS_URI")
-        """if env_uri:
-            connection_args["uri"] = env_uri
-            logger.debug(f"Using Milvus URI from env: {env_uri}")
-            return connection_args
-        """
-        env_host = MILVUS_HOST
-        env_port = MILVUS_PORT
-        print(f"ENV HOST PORT: {env_host} {env_port}")
-        if env_host and env_port:
-            connection_args["host"] = env_host
-            connection_args["port"] = int(env_port)
-            logger.debug(f"Using Milvus connection from env: {env_host}:{env_port}")
             return connection_args
 
         default_uri = os.getenv("MILVUS_DB_PATH", "./milvus_data.db")

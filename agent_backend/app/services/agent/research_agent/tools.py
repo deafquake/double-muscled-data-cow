@@ -9,6 +9,8 @@ from langchain_core.tools import tool
 
 from ...vector_db.milvus_connector import MilvusConnector
 from ...vector_db.document_catalogue_connector import DocumentCatalogueConnector
+from ...vector_db.video_catalogue_connector import VideoCatalogueConnector
+from ...vector_db.video_segments_connector import VideoSegmentsConnector
 from ....db.mongodb_connector import MongoDBConnector
 from ....config.config import FILE_DB_NAME, UNSTRUCTURED_COLLECTION
 from ....utils.logger import get_logger
@@ -20,9 +22,17 @@ from .dataClasses import Context, UserInfo
 
 logger = get_logger(__name__)
 
-vector_store = MilvusConnector()
+_vector_store: Optional[MilvusConnector] = None
 _document_catalogue: Optional[DocumentCatalogueConnector] = None
-_sql_agent: Optional[SQLAgent] = None
+_video_catalogue: Optional[VideoCatalogueConnector] = None
+_video_segments: Optional[VideoSegmentsConnector] = None
+
+
+def _get_vector_store() -> MilvusConnector:
+    global _vector_store
+    if _vector_store is None:
+        _vector_store = MilvusConnector()
+    return _vector_store
 
 
 def _get_document_catalogue() -> DocumentCatalogueConnector:
@@ -31,6 +41,20 @@ def _get_document_catalogue() -> DocumentCatalogueConnector:
     if _document_catalogue is None:
         _document_catalogue = DocumentCatalogueConnector()
     return _document_catalogue
+
+
+def _get_video_catalogue() -> VideoCatalogueConnector:
+    global _video_catalogue
+    if _video_catalogue is None:
+        _video_catalogue = VideoCatalogueConnector()
+    return _video_catalogue
+
+
+def _get_video_segments() -> VideoSegmentsConnector:
+    global _video_segments
+    if _video_segments is None:
+        _video_segments = VideoSegmentsConnector()
+    return _video_segments
 
 @tool(parse_docstring=True)
 def think_tool(reflection: str) -> str:
@@ -171,7 +195,7 @@ def chunk_retriever_tool(query: str, k: int, runtime: ToolRuntime[Context], filt
         if expr:
             logger.info(f"Applying filter expression: {expr}")
 
-        retrieved_docs = vector_store.search(query, k=k, expr=expr)
+        retrieved_docs = _get_vector_store().search(query, k=k, expr=expr)
         if not retrieved_docs:
             return "No relevant documents found in the database."
         parts = []
@@ -397,21 +421,142 @@ def update_skill_tool(
 @tool(parse_docstring=True)
 def delete_skill_tool(skill_name: str) -> str:
     """Delete a skill from the skill library.
-    
+
     Use this to remove outdated or incorrect skills.
     This action cannot be undone.
-    
+
     Args:
         skill_name: The name of the skill to delete.
-    
+
     Returns:
         Success message if deleted, or error message if skill wasn't found.
     """
     skill_manager = get_skill_manager()
     success, message = skill_manager.delete_skill(skill_name)
-    
+
     if success:
         logger.info(f"Skill deleted via tool: {skill_name}")
         return message
     else:
         return f"Failed to delete skill: {message}"
+
+
+@tool(parse_docstring=True)
+def video_catalogue_search_tool(query: str, k: int = 5) -> str:
+    """Search the video catalogue to discover which recorded videos match a query.
+
+    This is the discovery layer for video content — identical in concept to
+    document_catalogue_search_tool but for Martin's daily video recordings.
+    Use it first to identify relevant videos, then drill into specific moments
+    with video_segment_retriever_tool.
+
+    Workflow
+    --------
+    1. Call this tool to find which videos contain relevant content.
+    2. Copy the video_id from the results.
+    3. Call video_segment_retriever_tool with filter_expr='video_id == "<id>"'
+       to retrieve the exact segments where the topic was discussed.
+
+    Args:
+        query: What you are looking for, e.g. "edge device architecture discussion"
+               or "meeting scheduled with colleague".
+        k: Number of videos to return (default 5).
+
+    Returns:
+        Matching videos with their video_id, recording timestamp, people present,
+        and a brief summary. Use the video_id with video_segment_retriever_tool.
+    """
+    try:
+        catalogue = _get_video_catalogue()
+        docs = catalogue.search(query, k=k)
+
+        if not docs:
+            return "No relevant videos found in the catalogue."
+
+        parts = [
+            "Found relevant videos. Use the video_id below with video_segment_retriever_tool:\n"
+        ]
+        for i, doc in enumerate(docs, start=1):
+            meta = doc.metadata or {}
+            video_id = meta.get("video_id", "Unknown")
+            timestamp = meta.get("timestamp", "Unknown")
+            people = meta.get("people", "[]")
+            summary = doc.page_content or "No summary available"
+            parts.append(
+                f"[{i}] video_id: {video_id}\n"
+                f"    Recorded: {timestamp}\n"
+                f"    People: {people}\n"
+                f"    Summary: {summary}"
+            )
+
+        parts.append(
+            "\nNext step: use video_segment_retriever_tool with "
+            "filter_expr='video_id == \"<video_id>\"' to find specific moments."
+        )
+        return "\n\n".join(parts)
+    except Exception as e:
+        logger.error(f"Error in video_catalogue_search_tool: {e}", exc_info=True)
+        return f"Error searching video catalogue: {e}"
+
+
+@tool(parse_docstring=True)
+def video_segment_retriever_tool(query: str, k: int = 5, filter_expr: str = "") -> str:
+    """Search individual video segments to find specific moments in daily recordings.
+
+    Each segment is a short slice of a video with its own summary, list of
+    people present, topics discussed, tone, and any calendar events or
+    decisions that came up in that moment.
+
+    Use after video_catalogue_search_tool to drill into the exact moment where
+    a topic was discussed, a decision was made, or an event was scheduled.
+
+    Filter examples
+    ---------------
+    - By video:  'video_id == "demo1"'
+    - By tone:   'tone == "formal"'
+    - Combined:  'video_id == "demo1" and tone == "friendly"'
+
+    Args:
+        query: What you are looking for within the video segments,
+               e.g. "discussion about diarization structure".
+        k: Number of segments to return (default 5).
+        filter_expr: Optional Milvus filter expression to narrow results.
+
+    Returns:
+        Matching segments with their video_id, segment number, timestamp,
+        people present, topics, tone, and the segment summary.
+    """
+    try:
+        connector = _get_video_segments()
+        docs = connector.search(query, k=k, expr=filter_expr or None)
+
+        if not docs:
+            return "No relevant video segments found."
+
+        parts = []
+        for i, doc in enumerate(docs, start=1):
+            meta = doc.metadata or {}
+            video_id = meta.get("video_id", "Unknown")
+            seg_num = meta.get("segment_number", "?")
+            timestamp = meta.get("timestamp", "Unknown")
+            people = meta.get("people_present", "[]")
+            topics = meta.get("topics", "[]")
+            tone = meta.get("tone", "unknown")
+            calendar_events = meta.get("calendar_events", "[]")
+            decisions = meta.get("decisions", "[]")
+            summary = doc.page_content or ""
+
+            parts.append(
+                f"[{i}] video_id: {video_id}  segment: {seg_num}  recorded: {timestamp}\n"
+                f"    People: {people}\n"
+                f"    Topics: {topics}\n"
+                f"    Tone: {tone}\n"
+                f"    Calendar events: {calendar_events}\n"
+                f"    Decisions: {decisions}\n"
+                f"    Summary: {summary}"
+            )
+
+        return "\n\n".join(parts)
+    except Exception as e:
+        logger.error(f"Error in video_segment_retriever_tool: {e}", exc_info=True)
+        return f"Error retrieving video segments: {e}"
