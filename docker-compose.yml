@@ -148,6 +148,7 @@ services:
       - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
       - FRONTEND_URL=${FRONTEND_URL}
       - VIDEO_DIR=/app/videos
+      - SHARED_DIR=/app/videos
     depends_on:
       - mongodb
       - standalone
@@ -237,13 +238,6 @@ services:
       - agent_backend
     networks:
       - idata-network
-  video-ingestion-api:
-    build : ./video-ingestion-api
-    container_name: video-ingestion-api
-    ports:
-      - "18080:8080"
-    volumes:
-      - ./video-ingestion-api/videos:/app/videos
 
 volumes:
   mongodb_data:

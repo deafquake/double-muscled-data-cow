@@ -1,2 +1,5 @@
 video-ingestion-api/videos/
 .env
+*.pyc
+__pycache__/
+videos/

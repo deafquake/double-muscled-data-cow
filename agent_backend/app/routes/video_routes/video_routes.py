@@ -6,15 +6,17 @@ from flask import jsonify, request
 
 from . import video_bp
 from ...routes.auth_routes.auth_extensions import token_auth
-
+from ...video_preprocessing.src.main import run_video_processing
+from ...db.mongodb_connector import MongoDBConnector
+from ...config.config import FILE_DB_NAME, VIDEO_COLLECTION
 VIDEO_DIR = Path(os.getenv("VIDEO_DIR", "/app/videos"))
 SUPPORTED_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v", ".flv"}
 
 VIDEO_DIR.mkdir(parents=True, exist_ok=True)
 
+mongo_connector = MongoDBConnector()
 
 @video_bp.get("/videos")
-@token_auth.login_required
 def list_videos():
     """List all ingested video files."""
     videos = [
@@ -26,7 +28,6 @@ def list_videos():
 
 
 @video_bp.post("/videos")
-@token_auth.login_required
 def ingest_video():
     """Receive and store a video file."""
     if "file" not in request.files:
@@ -44,4 +45,12 @@ def ingest_video():
     file.save(dest)
     size = dest.stat().st_size
     print(f"Saved video: {dest} ({size} bytes)")
-    return jsonify({"filename": file.filename, "size_bytes": size}), 201
+    print(f"Starting processing for {dest}...")
+    result = run_video_processing(shared_dir=str(VIDEO_DIR), video_name=file.filename.split(".")[0])
+    result['created_at'] = dest.stat().st_ctime
+    print(f"Finished processing for {dest}")
+
+    collection = mongo_connector.get_collection(FILE_DB_NAME, VIDEO_COLLECTION)
+    collection.insert_one({"created_at": result.pop("created_at"), **result})
+
+    return jsonify({"message": "Video ingested and processed successfully", "result": result}), 201

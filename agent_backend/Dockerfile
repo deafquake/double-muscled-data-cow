@@ -6,11 +6,21 @@ WORKDIR /app
 
 # Install system dependencies for your packages
 RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    libavcodec-dev \
+    libavformat-dev \
+    libavutil-dev \
+    libswscale-dev \
+    libswresample-dev \
+    libsndfile1 \
+    libsndfile1-dev \
+    libgl1 \
+    curl \
     gcc \
     g++ \
     git \
     libgl1 \
-    libglib2.0-0 \ 
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
