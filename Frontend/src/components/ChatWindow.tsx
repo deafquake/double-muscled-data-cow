@@ -28,10 +28,8 @@ interface ChatWindowProps {
   onOpenAddDocs: () => void;
   onRetryMessage: (messageId: string) => void;
   calendarCandidates: CalendarCandidate[];
-  onAnalyzeTranscript: (transcript: string) => Promise<void>;
   onApproveCandidate: (id: string) => Promise<void>;
   onRejectCandidate: (id: string) => Promise<void>;
-  isAnalyzingTranscript: boolean;
 }
 
 export interface ChatWindowRef {
@@ -291,10 +289,8 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({
               <p className="chat-subtitle">Select your docs, arm the right tools, and start a conversation when you're ready.</p>
               <CalendarCandidates
                 candidates={calendarCandidates}
-                onAnalyze={onAnalyzeTranscript}
                 onApprove={onApproveCandidate}
                 onReject={onRejectCandidate}
-                isAnalyzing={isAnalyzingTranscript}
               />
             </div>
           )}

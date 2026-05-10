@@ -811,10 +811,8 @@ const App = () => {
             onRetryMessage={() => undefined}
             onOpenToolModal={handleOpenToolModal}
             calendarCandidates={calendarCandidates}
-            onAnalyzeTranscript={handleAnalyzeTranscript}
             onApproveCandidate={handleApproveCandidate}
             onRejectCandidate={handleRejectCandidate}
-            isAnalyzingTranscript={isAnalyzingTranscript}
           />
         )}
       </main>
