@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Merge these keys into ios/Runner/Info.plist after running `flutter create`.
+  They must go inside the top-level <dict> element.
+-->
+<plist version="1.0">
+<dict>
+
+    <!-- Required: camera and microphone access for video recording -->
+    <key>NSCameraUsageDescription</key>
+    <string>Video Ingestion needs camera access to record videos.</string>
+
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Video Ingestion needs microphone access to record audio with your videos.</string>
+
+    <!--
+      Expose the app's Documents folder in the iOS Files app as
+      "On My iPhone → Video Ingestion".
+      This is how Mobius Sync can browse and sync the folder.
+    -->
+    <key>UIFileSharingEnabled</key>
+    <true/>
+
+    <key>LSSupportsOpeningDocumentsInPlace</key>
+    <true/>
+
+    <!--
+      Keep the camera session alive when the app is backgrounded briefly
+      (e.g. notification banner appears mid-recording).
+    -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>audio</string>
+    </array>
+
+</dict>
+</plist>

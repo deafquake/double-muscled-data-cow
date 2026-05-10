@@ -1,0 +1,7 @@
+video-ingestion-api/videos/
+.env
+video_preprocessing/src/stage_object_detector/onnx/yolov4.onnx
+
+*.pyc
+__pycache__/
+videos/
