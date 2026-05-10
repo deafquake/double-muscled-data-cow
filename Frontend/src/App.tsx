@@ -5,6 +5,7 @@ import SettingsPanel from "./components/SettingsPanel";
 import FileManagerModal from "./components/FileManagerModal";
 import ToolPickerModal from "./components/ToolPickerModal";
 import RemoteFilesPage from "./components/RemoteFilesPage";
+import VideoIngestionPage from "./components/VideoIngestionPage";
 import SpotlightSearch from "./components/SpotlightSearch";
 import LoginPage, { UserData } from "./components/LoginPage";
 import SignupPage from "./components/SignupPage";
@@ -70,13 +71,14 @@ const App = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [fileTree, setFileTree] = useState<FileNode[]>([]);
   const [loadedMessages, setLoadedMessages] = useState<Set<string>>(new Set());
-  const [activeSection, setActiveSection] = useState<"chat" | "remoteFiles" | "tasks">("chat");
+  const [activeSection, setActiveSection] = useState<"chat" | "remoteFiles" | "tasks" | "ingestions">("chat");
   const [theme, setTheme] = useState<ThemeId>(resolveInitialTheme);
   const [calendarToast, setCalendarToast] = useState<"connected" | "error" | null>(null);
   const [calendarCandidates, setCalendarCandidates] = useState<CalendarCandidate[]>([]);
   const [isAnalyzingTranscript, setIsAnalyzingTranscript] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const chatWindowRef = useRef<ChatWindowRef>(null);
+  const refreshPromiseRef = useRef<Promise<boolean> | null>(null);
 
   // Handle Google OAuth callback redirect params (?calendar_connected / ?calendar_error)
   useEffect(() => {
@@ -202,17 +204,21 @@ const App = () => {
     });
   };
 
-  // Try to refresh the access token using the refresh token cookie
-  const tryRefreshToken = async (): Promise<boolean> => {
-    try {
-      const res = await fetch(`${API_BASE}/auth/refresh`, {
+  // Try to refresh the access token. Deduplicates concurrent calls so only one
+  // refresh request is in-flight at a time — all callers share the same promise.
+  const tryRefreshToken = (): Promise<boolean> => {
+    if (!refreshPromiseRef.current) {
+      refreshPromiseRef.current = fetch(`${API_BASE}/auth/refresh`, {
         method: "POST",
         credentials: "include",
-      });
-      return res.ok;
-    } catch {
-      return false;
+      })
+        .then((res) => res.ok)
+        .catch(() => false)
+        .finally(() => {
+          refreshPromiseRef.current = null;
+        });
     }
+    return refreshPromiseRef.current;
   };
 
   // Logout and redirect to login screen
@@ -730,6 +736,13 @@ const App = () => {
     setActiveSection("chat");
   };
 
+  const handleOpenIngestions = () => {
+    setActiveSection("ingestions");
+    setDocMenuOpen(false);
+    setFileManagerOpen(false);
+    setShowSettings(false);
+  };
+
   const handleOpenTasks = () => {
     setActiveSection("tasks");
     setDocMenuOpen(false);
@@ -784,11 +797,14 @@ const App = () => {
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         onOpenRemoteFiles={handleOpenRemoteFiles}
+        onOpenIngestions={handleOpenIngestions}
       />
 
       <main className="main-pane">
         {activeSection === "remoteFiles" ? (
           <RemoteFilesPage onClose={handleCloseRemoteFiles} />
+        ) : activeSection === "ingestions" ? (
+          <VideoIngestionPage fetchJson={fetchJson} />
         ) : activeSection === "tasks" ? (
           <TasksPage onTryPrompt={handleTryTaskPrompt} />
         ) : (

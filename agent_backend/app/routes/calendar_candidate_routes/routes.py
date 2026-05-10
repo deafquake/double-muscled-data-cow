@@ -5,7 +5,7 @@ from flask import g, jsonify, request
 from ...db import SessionLocal
 from ...models.chat_models import CalendarEventCandidate, CandidateStatus
 from ...routes.auth_routes.auth_extensions import token_auth
-from ...services.transcript_analyzer import analyze_transcript
+from ...services.agent.transcript_analyzer import analyze_transcript
 from ...services.agent.calendar_agent.tools import _get_user_calendar_service
 from ...utils.logger import get_logger
 from . import candidate_bp

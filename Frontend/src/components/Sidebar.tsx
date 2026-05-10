@@ -21,6 +21,7 @@ interface SidebarProps {
   collapsed?: boolean;
   onToggleCollapse?: () => void;
   onOpenRemoteFiles?: () => void;
+  onOpenIngestions?: () => void;
 }
 
 interface QuickAction {
@@ -57,6 +58,18 @@ const IconGear = () => (
   <svg xmlns="http://www.w3.org/2000/svg" version="1.1" height="20" width="20" viewBox="3.6645970344543457 3.680098295211792 92.3938980102539 92.3938980102539"><path d="m43.266 92.754v-3.3008h-6.6016v-6.6016h-6.6016v6.6016h-13.195v-6.6016h-6.6016v-13.195h6.6016v-6.6016h-6.6016v-6.6016h-6.6016v-13.195h6.6016v-6.6016h6.6016v-6.6016h-6.6016l0.007813-6.582v-6.5977h6.6016v-6.5977h13.195v6.6016h6.6016l-0.003906-3.3047v-3.2969h6.6016l-0.003906-3.3008v-3.2969h13.195v6.6016h6.6016v6.6016h6.6016l-0.003906-3.3086v-3.2969h13.195v6.6016h6.6016v13.195h-6.6016v6.6016h6.6016v6.6016h6.6016v13.195h-6.6016v6.6016h-6.6016v6.6016h6.6016v13.195h-6.6016v6.6016h-13.195v-6.6016h-6.6016v6.6016h-6.6016v6.6016h-13.195zm13.195-9.8984v-6.5977h13.195v6.6016h13.195v-13.195h-6.6016v-13.195h13.195v-13.195h-13.195v-13.195h6.6016l0.003907-6.6055v-6.5977h-13.195v6.6016h-13.195v-13.199h-13.195v13.195h-13.195l-0.003907-3.2969v-3.3008h-13.195v13.195h6.6016v13.195h-13.195v13.195h13.195v13.195h-6.6016v13.195h13.195v-6.6016h13.195v13.195h13.195zm-13.195-16.496v-3.3008h-6.6016v-6.6016h-6.6016v-13.195h6.6016v-6.6016h6.6016v-6.6016h13.195v6.6016h6.6016v6.6016h6.6016v13.195h-6.6016v6.6016h-6.6016v6.6016h-13.195zm13.195-6.5977v-3.3008h6.6016v-13.195h-6.6016v-6.6016h-13.195v6.6016h-6.6016v13.195h6.6016v6.6016h13.195z" fill="currentColor"/></svg>
 );
 
+const IconFilm = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <rect x="1" y="3" width="18" height="14" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+    <line x1="5" y1="3" x2="5" y2="17" stroke="currentColor" strokeWidth="1.5"/>
+    <line x1="15" y1="3" x2="15" y2="17" stroke="currentColor" strokeWidth="1.5"/>
+    <line x1="1" y1="7" x2="5" y2="7" stroke="currentColor" strokeWidth="1.5"/>
+    <line x1="15" y1="7" x2="19" y2="7" stroke="currentColor" strokeWidth="1.5"/>
+    <line x1="1" y1="13" x2="5" y2="13" stroke="currentColor" strokeWidth="1.5"/>
+    <line x1="15" y1="13" x2="19" y2="13" stroke="currentColor" strokeWidth="1.5"/>
+  </svg>
+);
+
 const Sidebar = ({
   chats,
   activeChatId,
@@ -70,7 +83,8 @@ const Sidebar = ({
   onLogout,
   collapsed = false,
   onToggleCollapse,
-  onOpenRemoteFiles
+  onOpenRemoteFiles,
+  onOpenIngestions
 }: SidebarProps) => {
   const sortedChats = useMemo(
     () => [...chats].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)),
@@ -99,6 +113,15 @@ const Sidebar = ({
             label: "Remote Files",
             iconNode: <IconCloud />,
             action: onOpenRemoteFiles
+          }
+        ]
+      : []),
+    ...(onOpenIngestions
+      ? [
+          {
+            label: "Ingestions",
+            iconNode: <IconFilm />,
+            action: onOpenIngestions
           }
         ]
       : []),

@@ -1,7 +1,7 @@
 import os
 from .pipeline import run_pipeline
 from .agent.orchestrator import Orchestrator, _TRANSCRIPT_BASE
-from ...services.transcript_analyzer import analyze_transcript
+from ...services.agent.transcript_analyzer import analyze_transcript
 from ...services.vector_db.video_catalogue_connector import VideoCatalogueConnector
 from ...services.vector_db.video_segments_connector import VideoSegmentsConnector
 from ...utils.logger import get_logger
@@ -64,6 +64,7 @@ def run_video_processing(
 
     # Attach metadata that downstream steps need.
     metadata["full_transcript"] = _merge_transcripts(video_name)
+    print(metadata["full_transcript"])
     if timestamp:
         metadata["timestamp"] = timestamp
 
@@ -78,6 +79,7 @@ def run_video_processing(
             reference_datetime=timestamp,
             preextracted_events=preextracted_events,
         )
+        logger.info("calendar analysis complete")
     except Exception as exc:
         # Calendar extraction is best-effort — don't fail the whole pipeline.
         logger.warning("transcript_analyzer failed (non-fatal): %s", exc)

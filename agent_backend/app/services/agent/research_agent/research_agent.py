@@ -22,6 +22,8 @@ from .tools import (
     update_skill_tool,
     delete_skill_tool,
     document_catalogue_search_tool,
+    video_catalogue_search_tool,
+    video_segment_retriever_tool,
 )
 from ..skill_manager import get_skill_manager
 from datetime import datetime
@@ -55,6 +57,8 @@ class ResearchAgent:
             save_user_info,
             retrieve_full_content_tool,
             document_catalogue_search_tool,
+            video_catalogue_search_tool,
+            video_segment_retriever_tool,
         ]
         self.model = model
         # if single_agent is True, we add the skill management tools to the agent's toolset

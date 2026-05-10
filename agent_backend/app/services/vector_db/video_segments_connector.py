@@ -7,6 +7,8 @@ from langchain_milvus import BM25BuiltInFunction, Milvus
 from langchain_core.documents import Document
 from langchain_classic.retrievers.contextual_compression import ContextualCompressionRetriever
 
+from pymilvus import connections
+
 from .lm_studio_embeddings import LMStudioEmbeddings
 from ...utils.logger import get_logger
 from ...config.config import MILVUS_HOST, MILVUS_PORT
@@ -66,6 +68,13 @@ class VideoSegmentsConnector:
         try:
             connection_args = self._build_connection_args(uri, host, port)
             logger.info(f"VideoSegmentsConnector: connecting to Milvus — {connection_args}")
+
+            if not connections.has_connection("default"):
+                connections.connect(
+                    alias="default",
+                    host=host or MILVUS_HOST,
+                    port=int(port or MILVUS_PORT),
+                )
 
             self._vector_store = Milvus(
                 embedding_function=embeddings,

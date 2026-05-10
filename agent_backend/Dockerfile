@@ -29,8 +29,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt 
 
-RUN pip install psycopg2-binary
-RUN pip install PyJWT
+RUN pip install psycopg2-binary librosa
 RUN pip install flask-cors flask_httpauth langgraph-checkpoint-postgres "psycopg[binary,pool]" langchain-mcp-adapters
 
 
