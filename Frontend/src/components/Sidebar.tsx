@@ -110,7 +110,7 @@ const Sidebar = ({
     ...(onOpenRemoteFiles
       ? [
           {
-            label: "Remote Files",
+            label: "My Files",
             iconNode: <IconCloud />,
             action: onOpenRemoteFiles
           }
@@ -119,7 +119,7 @@ const Sidebar = ({
     ...(onOpenIngestions
       ? [
           {
-            label: "Ingestions",
+            label: "My Day",
             iconNode: <IconFilm />,
             action: onOpenIngestions
           }
