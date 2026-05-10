@@ -67,7 +67,7 @@ def ingest_video():
     print(f"Finished processing for {dest}")
 
     collection = mongo_connector.get_collection(FILE_DB_NAME, VIDEO_COLLECTION)
-    collection.insert_one({"created_at": created_at,"user_id":user.id, **result})
+    collection.insert_one({"created_at": created_at, "user_id": str(user.id), **result})
 
     return jsonify({"message": "Video ingested and processed successfully", "result": result}), 201
 
@@ -91,9 +91,17 @@ def list_transcripts():
     start = datetime(target_date.year, target_date.month, target_date.day, 0, 0, 0, tzinfo=timezone.utc)
     end = datetime(target_date.year, target_date.month, target_date.day, 23, 59, 59, 999999, tzinfo=timezone.utc)
 
-    # user.id is a UUID; pymongo may store it as Binary UUID or as string depending
-    # on the insertion path. Query both representations so nothing is missed.
-    user_id_variants = [user.id, str(user.id)]
+    # user.id is a UUID object; pymongo 4.x with UuidRepresentation.UNSPECIFIED
+    # cannot encode raw uuid.UUID in queries. Convert to string and also cover
+    # documents without a user_id for backward compat with pre-tracking data.
+    user_id_str = str(user.id)
+    user_filter = {
+        "$or": [
+            {"user_id": user_id_str},
+            {"user_id": {"$exists": False}},
+            {"user_id": None},
+        ]
+    }
 
     # Date can be matched against the BSON datetime `created_at` field OR against
     # the ISO-string `timestamp` field (whichever is present in the document).
@@ -103,7 +111,7 @@ def list_transcripts():
             {"timestamp": {"$regex": f"^{date_prefix}"}},
         ]
     }
-    query = {"$and": [{"user_id": {"$in": user_id_variants}}, date_filter]}
+    query = {"$and": [user_filter, date_filter]}
 
     try:
         collection = mongo_connector.get_collection(FILE_DB_NAME, VIDEO_COLLECTION)
