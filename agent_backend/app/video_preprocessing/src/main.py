@@ -6,7 +6,6 @@ from ...services.vector_db.video_catalogue_connector import VideoCatalogueConnec
 from ...services.vector_db.video_segments_connector import VideoSegmentsConnector
 from ...utils.logger import get_logger
 
-<<<<<<< HEAD
 logger = get_logger(__name__)
 
 
@@ -55,17 +54,12 @@ def run_video_processing(
     logger.info("Starting video processing — video: %s", video_name)
 
     # Stage 1-7: ffmpeg, librosa, Whisper ASR, YOLO key-frame detection.
-=======
-def run_video_processing(shared_dir: str, video_name: str) -> dict:
-    print(f"Running video processing for {video_name} in {shared_dir}...")
->>>>>>> 461e273 (feat: Enhance video processing by updating created_at timestamp format and improving logging)
     run_pipeline(shared_dir, video_name)
     logger.info("Pipeline finished — starting orchestrator analysis for %s", video_name)
 
     # LLM orchestrator: produces the structured daily summary with people,
     # decisions, calendar events (with relative times), and a brief summary.
     orch = Orchestrator()
-<<<<<<< HEAD
     metadata = orch.analyse_video(video_name)
 
     # Attach metadata that downstream steps need.
@@ -98,12 +92,3 @@ def run_video_processing(shared_dir: str, video_name: str) -> dict:
 
     logger.info("Video processing complete — video: %s", video_name)
     return metadata
-=======
-    print(f"[Orchestrator] Initialized with model '{orch.model}' , client ready: {orch.client is not None}")
-
-    result = orch.analyse_video(video_name) # get json output
-    # add the full transcript to the output
-    full_transcript = merge_transcripts(video_name) 
-    result["full_transcript"] = full_transcript
-    return result
->>>>>>> 461e273 (feat: Enhance video processing by updating created_at timestamp format and improving logging)
