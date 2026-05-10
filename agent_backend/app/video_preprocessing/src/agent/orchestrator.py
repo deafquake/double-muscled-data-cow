@@ -17,7 +17,7 @@ _LLM_MODEL    = os.environ.get("LLM_MODEL", "gemma-4")
 
 def _scene_count(name_of_video: str) -> int:
     """Return the number of scenes available for a video (based on transcript files)."""
-    pattern = str(TRANSCRIPT_BASE / name_of_video / f"{name_of_video}*.txt")
+    pattern = str(_TRANSCRIPT_BASE / name_of_video / f"{name_of_video}*.txt")
     return len(_glob.glob(pattern))
 
 
@@ -36,10 +36,10 @@ class Orchestrator:
         3. Save and return the final output.
     """
 
-    def _init_(self, model: str = _LLM_MODEL):
+    def __init__(self, model: str = _LLM_MODEL):
+        print(f"[Orchestrator] Initializing with model '{model}' and LLM base URL '{_LLM_BASE_URL}'")
         self.model = model
         self.client = OpenAI(base_url=_LLM_BASE_URL, api_key="lm-studio")
-
     # ------------------------------------------------------------------
     # Low-level: image + text call
     # ------------------------------------------------------------------

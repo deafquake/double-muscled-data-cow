@@ -1,5 +1,10 @@
 import os
+<<<<<<< HEAD
 from datetime import datetime, timezone
+=======
+import shutil
+from datetime import datetime
+>>>>>>> 461e273 (feat: Enhance video processing by updating created_at timestamp format and improving logging)
 from pathlib import Path
 
 from flask import jsonify, request
@@ -53,6 +58,7 @@ def ingest_video():
 
     print(f"Saved video: {dest} ({dest.stat().st_size} bytes)")
     print(f"Starting processing for {dest}...")
+<<<<<<< HEAD
 
     result = run_video_processing(
         shared_dir=str(VIDEO_DIR),
@@ -61,6 +67,10 @@ def ingest_video():
         user_id=None,  # no authenticated user on this endpoint yet
     )
 
+=======
+    result = run_video_processing(shared_dir=str(VIDEO_DIR), video_name=file.filename.split(".")[0])
+    result['created_at'] = datetime.fromtimestamp(dest.stat().st_ctime).isoformat()
+>>>>>>> 461e273 (feat: Enhance video processing by updating created_at timestamp format and improving logging)
     print(f"Finished processing for {dest}")
 
     collection = mongo_connector.get_collection(FILE_DB_NAME, VIDEO_COLLECTION)
