@@ -10,7 +10,7 @@ class RcloneRemoteCreateRequest(BaseModel):
     """Request model for creating a new rclone remote"""
 
     name: str
-    type: Literal[*REMOTE_TYPES]
+    type: Literal[REMOTE_TYPES]
     config_token: str = Field(
         ...,
         description="Configuration token for headless authentication",

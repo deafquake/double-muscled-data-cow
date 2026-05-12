@@ -36,7 +36,7 @@ setup_logging(LOGGER_CONFIG_FILE_PATH)
 logger = logging.getLogger(__name__)
 # set default values for global variables
 LOCAL_DOCUMENTS_FOLDER_PATH = os.environ.get(
-    "LOCAL_DOCUMENTS_FOLDER_PATH", "local-documents"
+    "LOCAL_DOCUMENTS_FOLDER_PATH", "../local-documents"
 )
 WATCHDOG_GLOBAL_OBSERVER_TIMEOUT_SECONDS = int(
     os.environ.get("WATCHDOG_GLOBAL_OBSERVER_TIMEOUT_SECONDS", "1")
