@@ -1,4 +1,4 @@
-# iPDA - a real ai assistant 
+# Data Cow - a real ai assistant 
 ## Components
 The system is composed of  main components: 
 1. Agent Orchestrator 
@@ -13,7 +13,7 @@ the aim of this project is to have a truly smart and capable ai assistant that f
 we have two separate data collection layers: 
 
 1. Document Collection & Processing: 
-we have a service that uses rsync that automatically syncs our remote documents to our local device, these documents then get locally parsed and embedded to be used by our agent. Since our model is small and our document load is big we have implemented a multi layer retreival process, where our agent first accesses a document catalogue which contains document uuids paired with a short summary and embedding of the summary of the said document. using this our model narrows its scope when doing a full chunk search improving its negative retention rates. The documents get parsed using docling locally then they get embedded using `text-embedding-embeddinggemma-300m` hosted on LMStudio. Our pipeline is capable of extracting both text and images from our files, so that these images can be used by the llm when producing outputs. 
+we have a service that uses rclone that automatically syncs our remote documents to our local device, these documents then get locally parsed and embedded to be used by our agent. Since our model is small and our document load is big we have implemented a multi layer retreival process, where our agent first accesses a document catalogue which contains document uuids paired with a short summary and embedding of the summary of the said document. using this our model narrows its scope when doing a full chunk search improving its negative retention rates. The documents get parsed using docling locally then they get embedded using `text-embedding-embeddinggemma-300m` hosted on LMStudio. Our pipeline is capable of extracting both text and images from our files, so that these images can be used by the llm when producing outputs. 
 
 2. Video Collection & Processing: 
 
@@ -30,5 +30,44 @@ our agents are as follows:
 document_agent - agent that does document and vector db retreivals
 calendar_agent - agent that interacts with google cloud api 
 orchestrator agent - agent that plans and manages the other agents. 
+
+## Architecture
+Iphone app         Remote Storage (Google Drive, S3, NAS…)
+     │                        │
+     │               User rclone Backend
+     │                (host, port 13000)
+     │                        │
+     └────────────────────────┘
+                  │
+           local-documents/
+                  │
+                  ▼
+        Document Collector ──(file events)──► MongoDB
+        (Docker, watchdog)                   (document metadata)
+                                                    │
+                                                    ▼
+                                       Document Parser Backend
+                                       (Docling / Mistral OCR)
+                                        │              │
+                                        ▼              ▼
+                                     Milvus         MongoDB
+                                  (vector chunks)  (chunks + images)
+                                             │
+                                             ▼
+                                   Agent Backend (Flask)
+                              ┌──────────────────────────┐
+                              │      Orchestrator Agent   │
+                              │  ┌──────────────────────┐ │
+                              │  │    Document Agent    │ │
+                              │  │  (RAG + skills)      │ │
+                              │  └──────────────────────┘ │
+                              │  ┌──────────────────────┐ │
+                              │  │      SQL Agent       │ │
+                              │  │  (PostgreSQL)        │ │
+                              │  └──────────────────────┘ │
+                              └──────────────────────────┘
+                                             │
+                                             ▼
+                                   Frontend (React + Vite)
 
 
